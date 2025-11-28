@@ -194,13 +194,15 @@ class EleveView extends JFrame implements ModelListener {
     private EleveController controller;
     
     // Couleurs
-    private final Color PRIMARY_COLOR = new Color(59, 130, 246);
-    private final Color SECONDARY_COLOR = new Color(139, 92, 246);
-    private final Color SUCCESS_COLOR = new Color(34, 197, 94);
-    private final Color WARNING_COLOR = new Color(234, 179, 8);
-    private final Color BACKGROUND_COLOR = new Color(249, 250, 251);
-    private final Color CARD_COLOR = Color.WHITE;
-    private final Color TEXT_COLOR = Color.BLACK;
+// Couleurs — Thème Dark Mode moderne
+private final Color PRIMARY_COLOR = new Color(99, 179, 237);     // Bleu pastel
+private final Color SECONDARY_COLOR = new Color(167, 139, 250);  // Violet doux
+private final Color SUCCESS_COLOR = new Color(74, 222, 128);     // Vert néon doux
+private final Color WARNING_COLOR = new Color(251, 146,  60);  // Orange doux
+private final Color BACKGROUND_COLOR = new Color(30, 41, 59);    // Bleu nuit
+private final Color CARD_COLOR = new Color(51, 65, 85);          // Gris bleuté foncé
+private final Color TEXT_COLOR = new Color(241, 245, 249);       // Gris clair presque blanc
+
     
     public EleveView() {
         setupUI();
@@ -271,12 +273,10 @@ class EleveView extends JFrame implements ModelListener {
         
         chargerButton.addActionListener(e -> controller.chargerCSV());
         tirerButton.addActionListener(e -> controller.tirerAuSort());
-        afficherButton.addActionListener(e -> controller.afficherEleves());
         remettreToutes.addActionListener(e -> controller.remettreToutes());
         
         buttonPanel.add(chargerButton);
         buttonPanel.add(tirerButton);
-        buttonPanel.add(afficherButton);
         buttonPanel.add(remettreToutes);
         
         // Slider pour le poids
@@ -445,7 +445,7 @@ class EleveView extends JFrame implements ModelListener {
     
     public void afficherResultatTirage(Eleve eleve) {
         resultatLabel.setText(eleve.toString() + " (Note: " + eleve.getNote() + ")");
-        resultatPanel.setBackground(new Color(254, 249, 195));
+        resultatPanel.setBackground(new Color(75, 0, 205));
         remettreIndividuelButton.setVisible(true);
     }
     
