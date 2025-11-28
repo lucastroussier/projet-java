@@ -202,6 +202,8 @@ private final Color WARNING_COLOR = new Color(251, 146,  60);  // Orange doux
 private final Color BACKGROUND_COLOR = new Color(30, 41, 59);    // Bleu nuit
 private final Color CARD_COLOR = new Color(51, 65, 85);          // Gris bleuté foncé
 private final Color TEXT_COLOR = new Color(241, 245, 249);       // Gris clair presque blanc
+private final Color TEXT_NOIR = new Color(51, 65, 85);       // Gris clair presque blanc
+
 
     
     public EleveView() {
@@ -294,11 +296,14 @@ private final Color TEXT_COLOR = new Color(241, 245, 249);       // Gris clair p
         poidsSlider.setPaintTicks(true);
         poidsSlider.setPaintLabels(true);
         poidsSlider.setBackground(BACKGROUND_COLOR);
+        ((Hashtable<?, ?>) poidsSlider.getLabelTable()).forEach((k, v) -> {
+        ((JLabel) v).setForeground(PRIMARY_COLOR);
+        });
         
         poidsLabel = new JLabel("1.0");
         poidsLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         poidsLabel.setForeground(PRIMARY_COLOR);
-        
+         
         poidsSlider.addChangeListener(e -> {
             double valeur = poidsSlider.getValue() / 10.0;
             poidsLabel.setText(String.format("%.1f", valeur));
@@ -330,7 +335,7 @@ private final Color TEXT_COLOR = new Color(241, 245, 249);       // Gris clair p
         
         resultatLabel = new JLabel("En attente du premier tirage", SwingConstants.CENTER);
         resultatLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        resultatLabel.setForeground(TEXT_COLOR);
+        resultatLabel.setForeground(TEXT_NOIR);
         
         remettreIndividuelButton = createStyledButton("Remettre", SUCCESS_COLOR);
         remettreIndividuelButton.setVisible(false);
@@ -396,7 +401,7 @@ private final Color TEXT_COLOR = new Color(241, 245, 249);       // Gris clair p
         JTableHeader header = table.getTableHeader();
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
         header.setBackground(pourTous ? PRIMARY_COLOR : WARNING_COLOR);
-        header.setForeground(Color.WHITE);
+        header.setForeground(Color.black);
         header.setPreferredSize(new Dimension(header.getWidth(), 40));
         
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -444,10 +449,15 @@ private final Color TEXT_COLOR = new Color(241, 245, 249);       // Gris clair p
     }
     
     public void afficherResultatTirage(Eleve eleve) {
-        resultatLabel.setText(eleve.toString() + " (Note: " + eleve.getNote() + ")");
-        resultatPanel.setBackground(new Color(75, 0, 205));
-        remettreIndividuelButton.setVisible(true);
-    }
+    resultatLabel.setText(eleve.toString() + " (Note: " + eleve.getNote() + ")");
+    resultatPanel.setBackground(BACKGROUND_COLOR);
+    
+    // ⭐ Modifier la couleur du texte
+    resultatLabel.setForeground(PRIMARY_COLOR); // ou une autre couleur
+    
+    remettreIndividuelButton.setVisible(true);
+}
+
     
     public void afficherListeEleves(List<Eleve> tous, List<Eleve> tires) {
         tableModelTous.setRowCount(0);
