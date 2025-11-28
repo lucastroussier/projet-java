@@ -7,6 +7,7 @@ import java.io.*;
 import java.util.*;
 import java.util.List;
 
+<<<<<<< HEAD
 public class TirageElevesMVC extends JFrame {
     // Données
     private List<Eleve> eleves;
@@ -14,6 +15,181 @@ public class TirageElevesMVC extends JFrame {
     private Eleve dernierEleve;
     
     // Composants UI
+=======
+// ============= MODÈLE =============
+class Eleve {
+    private String nom;
+    private String prenom;
+    private double note;
+    private boolean dejaTire;
+    
+    public Eleve(String nom, String prenom, double note) {
+        this.nom = nom;
+        this.prenom = prenom;
+        this.note = note;
+        this.dejaTire = false;
+    }
+    
+    public String getNom() { return nom; }
+    public String getPrenom() { return prenom; }
+    public double getNote() { return note; }
+    public boolean isDejaTire() { return dejaTire; }
+    public void setDejaTire(boolean dejaTire) { this.dejaTire = dejaTire; }
+    
+    @Override
+    public String toString() {
+        return prenom + " " + nom;
+    }
+}
+
+class EleveModel {
+    private List<Eleve> eleves;
+    private List<Eleve> elevesDejaChoisis;
+    private List<ModelListener> listeners;
+    
+    public EleveModel() {
+        eleves = new ArrayList<>();
+        elevesDejaChoisis = new ArrayList<>();
+        listeners = new ArrayList<>();
+    }
+    
+    public void addListener(ModelListener listener) {
+        listeners.add(listener);
+    }
+    
+    private void notifyListeners() {
+        for (ModelListener listener : listeners) {
+            listener.onDataChanged();
+        }
+    }
+    
+    public void chargerCSV(File fichier) throws IOException {
+        eleves.clear();
+        elevesDejaChoisis.clear();
+        BufferedReader br = new BufferedReader(new FileReader(fichier));
+        String ligne;
+        boolean premiereLigne = true;
+        
+        while ((ligne = br.readLine()) != null) {
+            if (premiereLigne) {
+                premiereLigne = false;
+                if (ligne.toLowerCase().contains("nom")) {
+                    continue;
+                }
+            }
+            
+            String[] parts = ligne.split("[,;]");
+            if (parts.length >= 3) {
+                String nom = parts[0].trim();
+                String prenom = parts[1].trim();
+                try {
+                    double note = Double.parseDouble(parts[2].trim());
+                    if (!nom.isEmpty() && !prenom.isEmpty()) {
+                        eleves.add(new Eleve(nom, prenom, note));
+                    }
+                } catch (NumberFormatException e) {
+                    // Ignorer les lignes avec des notes invalides
+                }
+            }
+        }
+        br.close();
+        notifyListeners();
+    }
+    
+    public Eleve tirerAuSortPondere(double poids) {
+        List<Eleve> elevesDisponibles = new ArrayList<>();
+        for (Eleve e : eleves) {
+            if (!e.isDejaTire()) {
+                elevesDisponibles.add(e);
+            }
+        }
+        
+        if (elevesDisponibles.isEmpty()) {
+            return null;
+        }
+        
+        // Calcul des poids : plus la note est basse, plus le poids est élevé
+        double noteMax = elevesDisponibles.stream().mapToDouble(Eleve::getNote).max().orElse(20.0);
+        List<Double> poidsList = new ArrayList<>();
+        double sommesPoids = 0.0;
+        
+        for (Eleve e : elevesDisponibles) {
+            // Formule : poids = (noteMax - note + 1) ^ facteurPoids
+            double poidsEleve = Math.pow(noteMax - e.getNote() + 1, poids);
+            poidsList.add(poidsEleve);
+            sommesPoids += poidsEleve;
+        }
+        
+        // Tirage pondéré
+        Random random = new Random();
+        double valeur = random.nextDouble() * sommesPoids;
+        double cumul = 0.0;
+        
+        for (int i = 0; i < elevesDisponibles.size(); i++) {
+            cumul += poidsList.get(i);
+            if (valeur <= cumul) {
+                Eleve eleveChoisi = elevesDisponibles.get(i);
+                eleveChoisi.setDejaTire(true);
+                elevesDejaChoisis.add(eleveChoisi);
+                notifyListeners();
+                return eleveChoisi;
+            }
+        }
+        
+        // Fallback (ne devrait pas arriver)
+        Eleve eleveChoisi = elevesDisponibles.get(elevesDisponibles.size() - 1);
+        eleveChoisi.setDejaTire(true);
+        elevesDejaChoisis.add(eleveChoisi);
+        notifyListeners();
+        return eleveChoisi;
+    }
+    
+    public void remettreEleve(Eleve eleve) {
+        eleve.setDejaTire(false);
+        elevesDejaChoisis.remove(eleve);
+        notifyListeners();
+    }
+    
+    public void remettreToutes() {
+        for (Eleve e : eleves) {
+            e.setDejaTire(false);
+        }
+        elevesDejaChoisis.clear();
+        notifyListeners();
+    }
+    
+    public List<Eleve> getEleves() {
+        return new ArrayList<>(eleves);
+    }
+    
+    public List<Eleve> getElevesDejaChoisis() {
+        return new ArrayList<>(elevesDejaChoisis);
+    }
+    
+    public int getNombreEleves() {
+        return eleves.size();
+    }
+    
+    public int getNombreElevesDisponibles() {
+        int count = 0;
+        for (Eleve e : eleves) {
+            if (!e.isDejaTire()) count++;
+        }
+        return count;
+    }
+    
+    public boolean isEmpty() {
+        return eleves.isEmpty();
+    }
+}
+
+interface ModelListener {
+    void onDataChanged();
+}
+
+// ============= VUE =============
+class EleveView extends JFrame implements ModelListener {
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
     private JTable tableTous;
     private JTable tableTires;
     private DefaultTableModel tableModelTous;
@@ -25,6 +201,7 @@ public class TirageElevesMVC extends JFrame {
     private JSlider poidsSlider;
     private JLabel poidsLabel;
     private JLabel infoLabel;
+<<<<<<< HEAD
     private javax.swing.Timer animationTimer;
     private List<Confetti> confettis;
     private javax.swing.Timer confettiTimer;
@@ -37,6 +214,22 @@ public class TirageElevesMVC extends JFrame {
     private final Color BACKGROUND_COLOR = new Color(249, 250, 251);
     private final Color CARD_COLOR = Color.WHITE;
     private final Color TEXT_COLOR = Color.BLACK;
+=======
+    private EleveController controller;
+    
+    // Couleurs
+// Couleurs — Thème Dark Mode moderne
+private final Color PRIMARY_COLOR = new Color(99, 179, 237);     // Bleu pastel
+private final Color SECONDARY_COLOR = new Color(167, 139, 250);  // Violet doux
+private final Color SUCCESS_COLOR = new Color(74, 222, 128);     // Vert néon doux
+private final Color WARNING_COLOR = new Color(251, 146,  60);  // Orange doux
+private final Color BACKGROUND_COLOR = new Color(30, 41, 59);    // Bleu nuit
+private final Color CARD_COLOR = new Color(51, 65, 85);          // Gris bleuté foncé
+private final Color TEXT_COLOR = new Color(241, 245, 249);       // Gris clair presque blanc
+private final Color TEXT_NOIR = new Color(51, 65, 85);       // Gris clair presque blanc
+
+
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
     
     // Classe interne Eleve
     class Eleve {
@@ -184,6 +377,7 @@ public class TirageElevesMVC extends JFrame {
         afficherButton.setEnabled(false);
         remettreToutes.setEnabled(false);
         
+<<<<<<< HEAD
         chargerButton.addActionListener(e -> chargerCSV());
         tirerButton.addActionListener(e -> tirerAuSort());
         afficherButton.addActionListener(e -> afficherEleves());
@@ -192,6 +386,14 @@ public class TirageElevesMVC extends JFrame {
         buttonPanel.add(chargerButton);
         buttonPanel.add(tirerButton);
         buttonPanel.add(afficherButton);
+=======
+        chargerButton.addActionListener(e -> controller.chargerCSV());
+        tirerButton.addActionListener(e -> controller.tirerAuSort());
+        remettreToutes.addActionListener(e -> controller.remettreToutes());
+        
+        buttonPanel.add(chargerButton);
+        buttonPanel.add(tirerButton);
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
         buttonPanel.add(remettreToutes);
         
         // Slider pour le poids
@@ -209,11 +411,21 @@ public class TirageElevesMVC extends JFrame {
         poidsSlider.setPaintTicks(true);
         poidsSlider.setPaintLabels(true);
         poidsSlider.setBackground(BACKGROUND_COLOR);
+<<<<<<< HEAD
+=======
+        ((Hashtable<?, ?>) poidsSlider.getLabelTable()).forEach((k, v) -> {
+        ((JLabel) v).setForeground(PRIMARY_COLOR);
+        });
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
         
         poidsLabel = new JLabel("1.0");
         poidsLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         poidsLabel.setForeground(PRIMARY_COLOR);
+<<<<<<< HEAD
         
+=======
+         
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
         poidsSlider.addChangeListener(e -> {
             double valeur = poidsSlider.getValue() / 10.0;
             poidsLabel.setText(String.format("%.1f", valeur));
@@ -235,13 +447,18 @@ public class TirageElevesMVC extends JFrame {
         headerPanel.add(controlPanel, BorderLayout.CENTER);
         
         // ===== PANNEAU RÉSULTAT =====
+<<<<<<< HEAD
         resultatPanel = new ConfettiPanel();
         resultatPanel.setLayout(new BorderLayout(10, 0));
+=======
+        resultatPanel = new JPanel(new BorderLayout(10, 0));
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
         resultatPanel.setBackground(new Color(243, 244, 246));
         resultatPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(209, 213, 219), 2),
             BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
+<<<<<<< HEAD
         resultatPanel.setPreferredSize(new Dimension(1050, 120));
         
         resultatLabel = new JLabel("En attente du premier tirage", SwingConstants.CENTER);
@@ -255,6 +472,21 @@ public class TirageElevesMVC extends JFrame {
         resultatPanel.add(resultatLabel, BorderLayout.CENTER);
         resultatPanel.add(remettreIndividuelButton, BorderLayout.EAST);
         
+=======
+        resultatPanel.setPreferredSize(new Dimension(1050, 80));
+        
+        resultatLabel = new JLabel("En attente du premier tirage", SwingConstants.CENTER);
+        resultatLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        resultatLabel.setForeground(TEXT_NOIR);
+        
+        remettreIndividuelButton = createStyledButton("Remettre", SUCCESS_COLOR);
+        remettreIndividuelButton.setVisible(false);
+        remettreIndividuelButton.addActionListener(e -> controller.remettreIndividuel());
+        
+        resultatPanel.add(resultatLabel, BorderLayout.CENTER);
+        resultatPanel.add(remettreIndividuelButton, BorderLayout.EAST);
+        
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
         // ===== TABLES =====
         JPanel tablesPanel = new JPanel(new GridLayout(1, 2, 15, 0));
         tablesPanel.setBackground(BACKGROUND_COLOR);
@@ -312,7 +544,11 @@ public class TirageElevesMVC extends JFrame {
         JTableHeader header = table.getTableHeader();
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
         header.setBackground(pourTous ? PRIMARY_COLOR : WARNING_COLOR);
+<<<<<<< HEAD
         header.setForeground(Color.WHITE);
+=======
+        header.setForeground(Color.black);
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
         header.setPreferredSize(new Dimension(header.getWidth(), 40));
         
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -350,6 +586,7 @@ public class TirageElevesMVC extends JFrame {
         
         int result = fileChooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
+<<<<<<< HEAD
             File fichier = fileChooser.getSelectedFile();
             try {
                 lireCSV(fichier);
@@ -358,6 +595,105 @@ public class TirageElevesMVC extends JFrame {
                     "Succès", JOptionPane.INFORMATION_MESSAGE);
                 activerBoutons(true);
                 mettreAJourInfo();
+=======
+            return fileChooser.getSelectedFile();
+        }
+        return null;
+    }
+    
+    public void afficherMessage(String message, String titre, int type) {
+        JOptionPane.showMessageDialog(this, message, titre, type);
+    }
+    
+    public void afficherResultatTirage(Eleve eleve) {
+    resultatLabel.setText(eleve.toString() + " (Note: " + eleve.getNote() + ")");
+    resultatPanel.setBackground(BACKGROUND_COLOR);
+    
+    // ⭐ Modifier la couleur du texte
+    resultatLabel.setForeground(PRIMARY_COLOR); // ou une autre couleur
+    
+    remettreIndividuelButton.setVisible(true);
+}
+
+    
+    public void afficherListeEleves(List<Eleve> tous, List<Eleve> tires) {
+        tableModelTous.setRowCount(0);
+        for (Eleve e : tous) {
+            if (!e.isDejaTire()) {
+                tableModelTous.addRow(new Object[]{e.getNom(), e.getPrenom(), e.getNote()});
+            }
+        }
+        
+        tableModelTires.setRowCount(0);
+        for (Eleve e : tires) {
+            tableModelTires.addRow(new Object[]{e.getNom(), e.getPrenom(), e.getNote()});
+        }
+    }
+    
+    public void activerBoutons(boolean activer) {
+        tirerButton.setEnabled(activer);
+        afficherButton.setEnabled(activer);
+        remettreToutes.setEnabled(activer);
+        
+        if (!activer) {
+            tirerButton.setBackground(new Color(156, 163, 175));
+            afficherButton.setBackground(new Color(156, 163, 175));
+            remettreToutes.setBackground(new Color(156, 163, 175));
+        } else {
+            tirerButton.setBackground(SECONDARY_COLOR);
+            afficherButton.setBackground(SUCCESS_COLOR);
+            remettreToutes.setBackground(WARNING_COLOR);
+        }
+    }
+    
+    public double getPoids() {
+        return poidsSlider.getValue() / 10.0;
+    }
+    
+    public void cacherBoutonRemettre() {
+        remettreIndividuelButton.setVisible(false);
+    }
+    
+    public void mettreAJourInfo(int disponibles, int total) {
+        infoLabel.setText(disponibles + " élèves disponibles sur " + total);
+    }
+    
+    @Override
+    public void onDataChanged() {
+        activerBoutons(!controller.getModel().isEmpty());
+    }
+}
+
+// ============= CONTRÔLEUR =============
+class EleveController {
+    private EleveModel model;
+    private EleveView view;
+    private Eleve dernierEleve;
+    
+    public EleveController(EleveModel model, EleveView view) {
+        this.model = model;
+        this.view = view;
+        model.addListener(view);
+        this.dernierEleve = null;
+    }
+    
+    public EleveModel getModel() {
+        return model;
+    }
+    
+    public void chargerCSV() {
+        File fichier = view.choisirFichier();
+        if (fichier != null) {
+            try {
+                model.chargerCSV(fichier);
+                view.afficherMessage(
+                    model.getNombreEleves() + " élève(s) chargé(s) avec succès !",
+                    "Succès",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+                view.activerBoutons(true);
+                view.mettreAJourInfo(model.getNombreElevesDisponibles(), model.getNombreEleves());
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
                 afficherEleves();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, 
@@ -367,6 +703,7 @@ public class TirageElevesMVC extends JFrame {
         }
     }
     
+<<<<<<< HEAD
     private void lireCSV(File fichier) throws IOException {
         eleves.clear();
         elevesDejaChoisis.clear();
@@ -551,6 +888,53 @@ public class TirageElevesMVC extends JFrame {
             mettreAJourInfo();
             dernierEleve = null;
         }
+=======
+    public void tirerAuSort() {
+        double poids = view.getPoids();
+        dernierEleve = model.tirerAuSortPondere(poids);
+        
+        if (dernierEleve != null) {
+            view.afficherResultatTirage(dernierEleve);
+            afficherEleves();
+            view.mettreAJourInfo(model.getNombreElevesDisponibles(), model.getNombreEleves());
+            
+            if (model.getNombreElevesDisponibles() == 0) {
+                view.afficherMessage(
+                    "Tous les élèves ont été tirés !",
+                    "Information",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+            }
+        } else {
+            view.afficherMessage(
+                "Aucun élève disponible !",
+                "Attention",
+                JOptionPane.WARNING_MESSAGE
+            );
+        }
+    }
+    
+    public void afficherEleves() {
+        view.afficherListeEleves(model.getEleves(), model.getElevesDejaChoisis());
+    }
+    
+    public void remettreIndividuel() {
+        if (dernierEleve != null) {
+            model.remettreEleve(dernierEleve);
+            view.cacherBoutonRemettre();
+            afficherEleves();
+            view.mettreAJourInfo(model.getNombreElevesDisponibles(), model.getNombreEleves());
+            dernierEleve = null;
+        }
+    }
+    
+    public void remettreToutes() {
+        model.remettreToutes();
+        view.cacherBoutonRemettre();
+        afficherEleves();
+        view.mettreAJourInfo(model.getNombreElevesDisponibles(), model.getNombreEleves());
+        dernierEleve = null;
+>>>>>>> 1040e7a450ec83444222b385c5fa3a27baa150d1
     }
     
     private void remettreToutes() {
