@@ -1,13 +1,20 @@
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.io.*;
 import java.util.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 public class TirageElevesMVC extends JFrame {
+    // Mode de tirage
+    private enum ModeTirage {
+        NOTES, TICKETS
+    }
+    
+    private ModeTirage modeActuel;
+    
     // Données
     private List<Eleve> eleves;
     private List<Eleve> elevesDejaChoisis;
@@ -25,6 +32,7 @@ public class TirageElevesMVC extends JFrame {
     private JSlider poidsSlider;
     private JLabel poidsLabel;
     private JLabel infoLabel;
+    private JLabel modeLabel;
     private javax.swing.Timer animationTimer;
     private List<Confetti> confettis;
     private javax.swing.Timer confettiTimer;
@@ -43,20 +51,41 @@ public class TirageElevesMVC extends JFrame {
         private String nom;
         private String prenom;
         private double note;
-        private boolean dejaTire;
+        private int ticketsInitiaux;
+        private int ticketsRestants;
+        private boolean dejaTire; // Pour mode NOTES uniquement
         
-        public Eleve(String nom, String prenom, double note) {
+        public Eleve(String nom, String prenom, double note, int tickets) {
             this.nom = nom;
             this.prenom = prenom;
             this.note = note;
+            this.ticketsInitiaux = tickets;
+            this.ticketsRestants = tickets;
             this.dejaTire = false;
         }
         
         public String getNom() { return nom; }
         public String getPrenom() { return prenom; }
         public double getNote() { return note; }
+        public int getTicketsInitiaux() { return ticketsInitiaux; }
+        public int getTicketsRestants() { return ticketsRestants; }
         public boolean isDejaTire() { return dejaTire; }
+        
         public void setDejaTire(boolean dejaTire) { this.dejaTire = dejaTire; }
+        
+        public void consommerTicket() {
+            if (ticketsRestants > 0) {
+                ticketsRestants--;
+            }
+        }
+        
+        public void resetTickets() {
+            ticketsRestants = ticketsInitiaux;
+        }
+        
+        public boolean aDesTickets() {
+            return ticketsRestants > 0;
+        }
         
         @Override
         public String toString() {
@@ -122,7 +151,27 @@ public class TirageElevesMVC extends JFrame {
         elevesDejaChoisis = new ArrayList<>();
         dernierEleve = null;
         confettis = new ArrayList<>();
+        
+        // Choix du mode au démarrage
+        choisirMode();
+        
         setupUI();
+    }
+    
+    private void choisirMode() {
+        String[] options = {"Tirage basé sur les Notes", "Tirage basé sur les Tickets"};
+        int choix = JOptionPane.showOptionDialog(
+            null,
+            "Choisissez le mode de tirage :",
+            "Mode de Tirage",
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[0]
+        );
+        
+        modeActuel = (choix == 1) ? ModeTirage.TICKETS : ModeTirage.NOTES;
     }
     
     private JButton createStyledButton(String text, Color color) {
@@ -148,7 +197,7 @@ public class TirageElevesMVC extends JFrame {
     }
     
     private void setupUI() {
-        setTitle("Tirage Pondéré d'Élèves");
+        setTitle("Tirage Pondéré d'Élèves - Mode " + (modeActuel == ModeTirage.NOTES ? "Notes" : "Tickets"));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1100, 750);
         setLocationRelativeTo(null);
@@ -162,11 +211,21 @@ public class TirageElevesMVC extends JFrame {
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(BACKGROUND_COLOR);
         
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        titlePanel.setBackground(BACKGROUND_COLOR);
+        
         JLabel titleLabel = new JLabel("Tirage Pondéré d'Élèves", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
         titleLabel.setForeground(TEXT_COLOR);
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        headerPanel.add(titleLabel, BorderLayout.NORTH);
+        titlePanel.add(titleLabel, BorderLayout.NORTH);
+        
+        modeLabel = new JLabel("Mode : " + (modeActuel == ModeTirage.NOTES ? "Tirage basé sur les Notes" : "Tirage basé sur les Tickets"), SwingConstants.CENTER);
+        modeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        modeLabel.setForeground(SECONDARY_COLOR);
+        titlePanel.add(modeLabel, BorderLayout.SOUTH);
+        
+        titlePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        headerPanel.add(titlePanel, BorderLayout.NORTH);
         
         // Panel des boutons et contrôles
         JPanel controlPanel = new JPanel(new BorderLayout(10, 5));
@@ -194,37 +253,40 @@ public class TirageElevesMVC extends JFrame {
         buttonPanel.add(afficherButton);
         buttonPanel.add(remettreToutes);
         
-        // Slider pour le poids
-        JPanel poidsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
-        poidsPanel.setBackground(BACKGROUND_COLOR);
-        
-        JLabel poidsLabelText = new JLabel("Facteur de pondération :");
-        poidsLabelText.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        poidsLabelText.setForeground(TEXT_COLOR);
-        
-        poidsSlider = new JSlider(0, 50, 10);
-        poidsSlider.setPreferredSize(new Dimension(300, 40));
-        poidsSlider.setMajorTickSpacing(10);
-        poidsSlider.setMinorTickSpacing(5);
-        poidsSlider.setPaintTicks(true);
-        poidsSlider.setPaintLabels(true);
-        poidsSlider.setBackground(BACKGROUND_COLOR);
-        
-        poidsLabel = new JLabel("1.0");
-        poidsLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        poidsLabel.setForeground(PRIMARY_COLOR);
-        
-        poidsSlider.addChangeListener(e -> {
-            double valeur = poidsSlider.getValue() / 10.0;
-            poidsLabel.setText(String.format("%.1f", valeur));
-        });
-        
-        poidsPanel.add(poidsLabelText);
-        poidsPanel.add(poidsSlider);
-        poidsPanel.add(poidsLabel);
-        
         controlPanel.add(buttonPanel, BorderLayout.NORTH);
-        controlPanel.add(poidsPanel, BorderLayout.CENTER);
+        
+        // Slider pour le poids (uniquement en mode NOTES)
+        if (modeActuel == ModeTirage.NOTES) {
+            JPanel poidsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+            poidsPanel.setBackground(BACKGROUND_COLOR);
+            
+            JLabel poidsLabelText = new JLabel("Facteur de pondération :");
+            poidsLabelText.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            poidsLabelText.setForeground(TEXT_COLOR);
+            
+            poidsSlider = new JSlider(0, 50, 10);
+            poidsSlider.setPreferredSize(new Dimension(300, 40));
+            poidsSlider.setMajorTickSpacing(10);
+            poidsSlider.setMinorTickSpacing(5);
+            poidsSlider.setPaintTicks(true);
+            poidsSlider.setPaintLabels(true);
+            poidsSlider.setBackground(BACKGROUND_COLOR);
+            
+            poidsLabel = new JLabel("1.0");
+            poidsLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            poidsLabel.setForeground(PRIMARY_COLOR);
+            
+            poidsSlider.addChangeListener(e -> {
+                double valeur = poidsSlider.getValue() / 10.0;
+                poidsLabel.setText(String.format("%.1f", valeur));
+            });
+            
+            poidsPanel.add(poidsLabelText);
+            poidsPanel.add(poidsSlider);
+            poidsPanel.add(poidsLabel);
+            
+            controlPanel.add(poidsPanel, BorderLayout.CENTER);
+        }
         
         // Info label
         infoLabel = new JLabel("Chargez un fichier CSV pour commencer", SwingConstants.CENTER);
@@ -293,7 +355,10 @@ public class TirageElevesMVC extends JFrame {
         tableTitle.setBorder(BorderFactory.createEmptyBorder(0, 5, 8, 0));
         panel.add(tableTitle, BorderLayout.NORTH);
         
-        String[] colonnes = {"Nom", "Prénom", "Note"};
+        String[] colonnes = modeActuel == ModeTirage.NOTES 
+            ? new String[]{"Nom", "Prénom", "Note"}
+            : new String[]{"Nom", "Prénom", "Tickets"};
+            
         DefaultTableModel model = new DefaultTableModel(colonnes, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -383,16 +448,35 @@ public class TirageElevesMVC extends JFrame {
             }
             
             String[] parts = ligne.split("[,;]");
-            if (parts.length >= 3) {
-                String nom = parts[0].trim();
-                String prenom = parts[1].trim();
-                try {
-                    double note = Double.parseDouble(parts[2].trim());
-                    if (!nom.isEmpty() && !prenom.isEmpty()) {
-                        eleves.add(new Eleve(nom, prenom, note));
+            
+            if (modeActuel == ModeTirage.NOTES) {
+                // Mode NOTES : nom, prenom, note (3 colonnes)
+                if (parts.length >= 3) {
+                    String nom = parts[0].trim();
+                    String prenom = parts[1].trim();
+                    try {
+                        double note = Double.parseDouble(parts[2].trim());
+                        if (!nom.isEmpty() && !prenom.isEmpty()) {
+                            eleves.add(new Eleve(nom, prenom, note, 0));
+                        }
+                    } catch (NumberFormatException e) {
+                        // Ignorer les lignes avec des valeurs invalides
                     }
-                } catch (NumberFormatException e) {
-                    // Ignorer les lignes avec des notes invalides
+                }
+            } else {
+                // Mode TICKETS : nom, prenom, note, tickets (4 colonnes)
+                if (parts.length >= 4) {
+                    String nom = parts[0].trim();
+                    String prenom = parts[1].trim();
+                    try {
+                        double note = Double.parseDouble(parts[2].trim());
+                        int tickets = Integer.parseInt(parts[3].trim());
+                        if (!nom.isEmpty() && !prenom.isEmpty()) {
+                            eleves.add(new Eleve(nom, prenom, note, tickets));
+                        }
+                    } catch (NumberFormatException e) {
+                        // Ignorer les lignes avec des valeurs invalides
+                    }
                 }
             }
         }
@@ -405,6 +489,14 @@ public class TirageElevesMVC extends JFrame {
             return;
         }
         
+        if (modeActuel == ModeTirage.NOTES) {
+            tirerAuSortNotes();
+        } else {
+            tirerAuSortTickets();
+        }
+    }
+    
+    private void tirerAuSortNotes() {
         double poids = poidsSlider.getValue() / 10.0;
         List<Eleve> elevesDisponibles = new ArrayList<>();
         
@@ -450,19 +542,47 @@ public class TirageElevesMVC extends JFrame {
             gagnant = elevesDisponibles.get(elevesDisponibles.size() - 1);
         }
         
+        lancerAnimationTirage(elevesDisponibles, gagnant, random, true);
+    }
+    
+    private void tirerAuSortTickets() {
+        // Créer la liste avec duplication basée sur les tickets
+        List<Eleve> listeAvecTickets = new ArrayList<>();
+        
+        for (Eleve e : eleves) {
+            for (int i = 0; i < e.getTicketsRestants(); i++) {
+                listeAvecTickets.add(e);
+            }
+        }
+        
+        if (listeAvecTickets.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Aucun ticket disponible !",
+                "Attention", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Tirage aléatoire simple
+        Random random = new Random();
+        Eleve gagnant = listeAvecTickets.get(random.nextInt(listeAvecTickets.size()));
+        
+        lancerAnimationTirage(listeAvecTickets, gagnant, random, false);
+    }
+    
+    private void lancerAnimationTirage(List<Eleve> liste, Eleve gagnant, Random random, boolean modeNotes) {
         // Désactiver le bouton pendant l'animation
         tirerButton.setEnabled(false);
         
         // Animation de type machine à sous
         final Eleve eleveGagnant = gagnant;
         final int[] compteur = {0};
-        final int dureeAnimation = 50; // nombre de changements
+        final int dureeAnimation = 50;
         
         animationTimer = new javax.swing.Timer(50, null);
         animationTimer.addActionListener(e -> {
             if (compteur[0] < dureeAnimation) {
                 // Afficher un élève aléatoire
-                Eleve eleveAleatoire = elevesDisponibles.get(random.nextInt(elevesDisponibles.size()));
+                Eleve eleveAleatoire = liste.get(random.nextInt(liste.size()));
                 resultatLabel.setText(eleveAleatoire.toString());
                 resultatLabel.setForeground(SECONDARY_COLOR);
                 compteur[0]++;
@@ -470,8 +590,17 @@ public class TirageElevesMVC extends JFrame {
                 // Arrêter l'animation et afficher le gagnant
                 animationTimer.stop();
                 dernierEleve = eleveGagnant;
-                eleveGagnant.setDejaTire(true);
-                elevesDejaChoisis.add(eleveGagnant);
+                
+                if (modeNotes) {
+                    eleveGagnant.setDejaTire(true);
+                    elevesDejaChoisis.add(eleveGagnant);
+                } else {
+                    eleveGagnant.consommerTicket();
+                    // Ajouter à la liste des tirés seulement si c'était le premier tirage de cet élève
+                    if (!elevesDejaChoisis.contains(eleveGagnant)) {
+                        elevesDejaChoisis.add(eleveGagnant);
+                    }
+                }
                 
                 afficherResultatTirage(eleveGagnant);
                 lancerConfettis();
@@ -479,9 +608,13 @@ public class TirageElevesMVC extends JFrame {
                 mettreAJourInfo();
                 tirerButton.setEnabled(true);
                 
-                if (getNombreElevesDisponibles() == 0) {
+                if (modeNotes && getNombreElevesDisponibles() == 0) {
                     JOptionPane.showMessageDialog(this,
                         "Tous les élèves ont été tirés !",
+                        "Information", JOptionPane.INFORMATION_MESSAGE);
+                } else if (!modeNotes && getTotalTicketsRestants() == 0) {
+                    JOptionPane.showMessageDialog(this,
+                        "Tous les tickets ont été utilisés !",
                         "Information", JOptionPane.INFORMATION_MESSAGE);
                 }
             }
@@ -522,7 +655,11 @@ public class TirageElevesMVC extends JFrame {
     }
     
     private void afficherResultatTirage(Eleve eleve) {
-        resultatLabel.setText("🎉 " + eleve.toString() + " 🎉");
+        String message = "🎉 " + eleve.toString() + " 🎉";
+        if (modeActuel == ModeTirage.TICKETS) {
+            message += " (" + eleve.getTicketsRestants() + " ticket(s) restant(s))";
+        }
+        resultatLabel.setText(message);
         resultatLabel.setForeground(new Color(139, 92, 246));
         resultatPanel.setBackground(new Color(254, 249, 195));
         remettreIndividuelButton.setVisible(true);
@@ -530,22 +667,55 @@ public class TirageElevesMVC extends JFrame {
     
     private void afficherEleves() {
         tableModelTous.setRowCount(0);
-        for (Eleve e : eleves) {
-            if (!e.isDejaTire()) {
-                tableModelTous.addRow(new Object[]{e.getNom(), e.getPrenom(), e.getNote()});
-            }
-        }
-        
         tableModelTires.setRowCount(0);
-        for (Eleve e : elevesDejaChoisis) {
-            tableModelTires.addRow(new Object[]{e.getNom(), e.getPrenom(), e.getNote()});
+        
+        if (modeActuel == ModeTirage.NOTES) {
+            for (Eleve e : eleves) {
+                if (!e.isDejaTire()) {
+                    tableModelTous.addRow(new Object[]{e.getNom(), e.getPrenom(), e.getNote()});
+                }
+            }
+            
+            for (Eleve e : elevesDejaChoisis) {
+                tableModelTires.addRow(new Object[]{e.getNom(), e.getPrenom(), e.getNote()});
+            }
+        } else {
+            // Mode TICKETS
+            for (Eleve e : eleves) {
+                if (e.getTicketsRestants() > 0) {
+                    tableModelTous.addRow(new Object[]{
+                        e.getNom(), 
+                        e.getPrenom(), 
+                        e.getTicketsRestants() + "/" + e.getTicketsInitiaux()
+                    });
+                }
+            }
+            
+            for (Eleve e : elevesDejaChoisis) {
+                int ticketsUtilises = e.getTicketsInitiaux() - e.getTicketsRestants();
+                tableModelTires.addRow(new Object[]{
+                    e.getNom(), 
+                    e.getPrenom(), 
+                    ticketsUtilises + " tirage(s)"
+                });
+            }
         }
     }
     
     private void remettreIndividuel() {
         if (dernierEleve != null) {
-            dernierEleve.setDejaTire(false);
-            elevesDejaChoisis.remove(dernierEleve);
+            if (modeActuel == ModeTirage.NOTES) {
+                dernierEleve.setDejaTire(false);
+                elevesDejaChoisis.remove(dernierEleve);
+            } else {
+                // En mode TICKETS, remettre un ticket
+                dernierEleve.resetTickets();
+                dernierEleve.consommerTicket(); // Remet à ticketsInitiaux - 1
+                int ticketsUtilises = dernierEleve.getTicketsInitiaux() - dernierEleve.getTicketsRestants();
+                if (ticketsUtilises == 0) {
+                    elevesDejaChoisis.remove(dernierEleve);
+                }
+            }
             remettreIndividuelButton.setVisible(false);
             afficherEleves();
             mettreAJourInfo();
@@ -554,8 +724,14 @@ public class TirageElevesMVC extends JFrame {
     }
     
     private void remettreToutes() {
-        for (Eleve e : eleves) {
-            e.setDejaTire(false);
+        if (modeActuel == ModeTirage.NOTES) {
+            for (Eleve e : eleves) {
+                e.setDejaTire(false);
+            }
+        } else {
+            for (Eleve e : eleves) {
+                e.resetTickets();
+            }
         }
         elevesDejaChoisis.clear();
         remettreIndividuelButton.setVisible(false);
@@ -588,8 +764,20 @@ public class TirageElevesMVC extends JFrame {
         return count;
     }
     
+    private int getTotalTicketsRestants() {
+        int total = 0;
+        for (Eleve e : eleves) {
+            total += e.getTicketsRestants();
+        }
+        return total;
+    }
+    
     private void mettreAJourInfo() {
-        infoLabel.setText(getNombreElevesDisponibles() + " élèves disponibles sur " + eleves.size());
+        if (modeActuel == ModeTirage.NOTES) {
+            infoLabel.setText(getNombreElevesDisponibles() + " élèves disponibles sur " + eleves.size());
+        } else {
+            infoLabel.setText(getTotalTicketsRestants() + " tickets disponibles");
+        }
     }
     
     public static void main(String[] args) {
